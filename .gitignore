@@ -41,3 +41,13 @@ $RECYCLE.BIN/
 Network Trash Folder
 Temporary Items
 .apdisk
+
+*.cachefile
+
+ContentProject/ContentProject/bin/*
+ContentProject/ContentProject/obj/*
+ContentProject/ContentProjectContent/obj/*
+FSharpApp1/bin/*
+FSharpApp1/obj/*
+XnaTest2/bin/*
+XnaTest2/obj/*
