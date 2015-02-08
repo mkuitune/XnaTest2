@@ -86,43 +86,90 @@ type IRenderable =
     abstract member World : Matrix with get
     abstract member Presentation : Presentation.Primitive
 
+
+module Grid = 
 // Grid to visualize scene limits
-type BackgroundGrid(g:GraphicsDevice) = 
-    let gridColor = Color.DimGray
-    let gv(x, y, z) = vpc(gridColor, v3(x, y, z))
-    let vertexType = typeof<VertexPositionColor>
-    let mutable vertexData = [|gv(0, 1, 0); gv(1, -1, 0);
-                               gv(1, -1, 0); gv(-1, -1, 0);
-                               gv(-1, -1, 0); gv(0, 1, 0)|] // todo gridlines
-    let mutable vertexBuffer = new VertexBuffer(g, vertexType, 3, BufferUsage.None)
-    let toWorld = Matrix.Identity //> world matrix
+    type Grid(g:GraphicsDevice) = 
+        let gridColor = Color.DimGray
+        let gv(x, y, z) = vpc(gridColor, v3(x, y, z))
+        let gvv(v:Vector3) = vpc(gridColor, v)
+        let vertexType = typeof<VertexPositionColor>
+        let mutable vertexData = [|gv(0, 1, 0); gv(1, -1, 0);
+                                   gv(1, -1, 0); gv(-1, -1, 0);
+                                   gv(-1, -1, 0); gv(0, 1, 0)|] // todo gridlines
+        let mutable vertexBuffer = new VertexBuffer(g, vertexType, 3, BufferUsage.None)
+        let toWorld = Matrix.Identity //> world matrix
 
-    do
-        vertexBuffer <- new VertexBuffer(g, vertexType, vertexData.Length, BufferUsage.None)
-        vertexBuffer.SetData<VertexPositionColor>(vertexData)
+        do
+            vertexBuffer <- new VertexBuffer(g, vertexType, vertexData.Length, BufferUsage.None)
+            vertexBuffer.SetData<VertexPositionColor>(vertexData)
 
-    member this.UpdateData() =
-        vertexBuffer <- new VertexBuffer(g, vertexType, vertexData.Length, BufferUsage.None)
-        vertexBuffer.SetData<VertexPositionColor>(vertexData)
+        member this.UpdateData() =
+            vertexBuffer <- new VertexBuffer(g, vertexType, vertexData.Length, BufferUsage.None)
+            vertexBuffer.SetData<VertexPositionColor>(vertexData)
 
-    member this.BuildGrid() = 
-        // Compute
-        let dim = 1.0
-        let max = v3(dim, dim, dim)
-        let min = max * (-1.f)
-        ()
-//        let gridpoints = [||]
+        member this.BuildGrid() = 
+            // Grid: Vertexbuffer with grid, instantiated with particular
+            // location
+            let w = 3.0f
+            let h = 3.0f
+            let w' = 0.5f * w
+            let h' = 0.5f * h
+            let nx = 10
+            let ny = 10
+            let p0x = v3(-w', -h', 0)
+            let p1x = v3(-w', h', 0)
+        
+            let p0y = v3(-w', -h', 0)
+            let p1y = v3(w', -h', 0)
 
-    member this.VertexBuffer  = vertexBuffer
-    member this.PrimitiveCount=  4
-    member this.World  = toWorld
-    member this.Presentation = Presentation.Line 
-    interface IRenderable with
-        member this.VertexBuffer with get() = this.VertexBuffer
-        member this.PrimitiveCount with get() =  this.PrimitiveCount
-        member this.World with get() = this.World
-        member this.Presentation with get() = this.Presentation
+            let dx = w / (float32 nx)
+            let dy = h / (float32 ny)
+            let pdx = v3(dx, 0, 0) 
+            let pdy = v3(0, dy, 0)
 
+            //let a = [for i in [0 .. 3] -> (i, i+1)] |> List.collect (fun x -> [fst x; snd x])
+            let mkvx (i:float32) = gvv (p0x + i * pdx) , gvv (p1x + i * pdx) 
+            let mkvy (i:float32) = gvv (p0y + i * pdy) , gvv (p1y + i * pdy) 
+            let xlines = [|for i in [0 .. nx] -> mkvx (float32 i)|]  |> Array.collect (fun x -> [|fst x; snd x|])
+            let ylines = [|for i in [0 .. nx] -> mkvy (float32 i)|] |> Array.collect (fun x -> [|fst x; snd x|])
+            vertexData <- Array.concat (seq {yield xlines; yield ylines})
+            this.UpdateData()
+
+        member this.VertexBuffer  = vertexBuffer
+        member this.PrimitiveCount =  vertexData.Length / 2
+        member this.World  = toWorld
+        member this.Presentation = Presentation.Line 
+        interface IRenderable with
+            member this.VertexBuffer with get() = this.VertexBuffer
+            member this.PrimitiveCount with get() =  this.PrimitiveCount
+            member this.World with get() = this.World
+            member this.Presentation with get() = this.Presentation
+    let xmin = 0
+    let xmax = 1
+    let ymin = 2
+    let ymax = 3
+    let zmin = 4
+    let zmax = 5
+
+//    type Group(g:GraphicsDevice) = 
+//        // Normal dirs for grid planes
+//        let normaldirs = [| v3(1,0,0); v3(-1,0,0); v3(0,1,0); v3(0, -1, 0); v3(0,0,1); v3(0,0,-1)|]
+//        let grid = Grid(g)
+//        do
+//            grid.BuildGrid()
+//
+//        member this.Drawables(viewDir:Vector3) =
+//            seq {
+//                for d in normaldirs do
+//                    if Vector3.Dot(viewDir, d) > 0.f then yield {new IRenderable() 
+//                                                                    with member x.VertexBuffer with get() = grid.VertexBuffer
+//                                                                    with member x.PrimitiveCount with get() = grid.PrimitiveCount
+//                                                                    with member x.Presentation with get() = grid.Presentation
+//                                                                    with member x.World with get() = 
+//                                                                    }
+//            }
+                
 
 //> Vertex source + vertex buffer ref
 type RGBTriangle(g:GraphicsDevice) = 
@@ -139,38 +186,6 @@ type RGBTriangle(g:GraphicsDevice) =
     member this.PrimitiveCount with get() =  vertexData.Length / 3
     member this.World with get() = toWorld
     member this.Presentation = Presentation.Triangle
-    interface IRenderable with
-        member this.VertexBuffer with get() = this.VertexBuffer
-        member this.PrimitiveCount with get() =  this.PrimitiveCount
-        member this.World with get() = this.World
-        member this.Presentation with get() = this.Presentation
-
-
-//> Vertex source + vertex buffer ref
-type RGBLines(g:GraphicsDevice) = 
-//    let mutable vertexData = [|vpc(Color.Green, v3(0, 1, 0)); vpc(Color.Green, v3(1, -1, 0)); 
-//                               vpc(Color.Red, v3(1, -1, 0)); vpc(Color.Red, v3(-1, -1, 0));
-//                               vpc(Color.Blue, v3(-1, -1, 0));vpc(Color.Blue, v3(0, 1, 0))
-//                               |]
-    let mutable vertexData = [|vpc(Color.Red, v3(0, 1, 0)); vpc(Color.Green, v3(1, -1, 0)); 
-                               vpc(Color.Blue, v3(-1, -1, 0)); vpc(Color.Blue, v3(1, -1, 0))|]
-    let vertexType = typeof<VertexPositionColor>
-    let mutable vertexBuffer : VertexBuffer =  null
-
-    let toWorld = Matrix.Identity //> world matrix
-
-    do
-        vertexBuffer <- new VertexBuffer(g, vertexType, vertexData.Length, BufferUsage.None)
-        vertexBuffer.SetData<VertexPositionColor>(vertexData)
-
-    member this.UpdateData() =
-        vertexBuffer <- new VertexBuffer(g, vertexType, vertexData.Length, BufferUsage.None)
-        vertexBuffer.SetData<VertexPositionColor>(vertexData)
-
-    member this.VertexBuffer = vertexBuffer
-    member this.PrimitiveCount =  vertexData.Length / 2
-    member this.World  = toWorld
-    member this.Presentation = Presentation.Line
     interface IRenderable with
         member this.VertexBuffer with get() = this.VertexBuffer
         member this.PrimitiveCount with get() =  this.PrimitiveCount
@@ -351,8 +366,10 @@ type ScreenApplication(g:GraphicsDevice, cont:ContentManager) =
    
     // Content 
     let mutable renderable = RGBTriangle(g)
-    let mutable lines = RGBLines(g)
-    let mutable grid = BackgroundGrid(g)
+    let mutable grid = Grid.Grid(g)
+
+    do
+        grid.BuildGrid()
 
     member this.UI = ui2d
     member this.View = view
@@ -381,7 +398,7 @@ type ScreenApplication(g:GraphicsDevice, cont:ContentManager) =
         if buttons.Pressed(Switch.Pointer.Left ) then
             let factor = 0.1
             view.RotateInplane (-factor * (float pointer.Delta.X))
-            view.RotateOffplane (factor * (float pointer.Delta.Y))
+            view.RotateOffplane (-factor * (float pointer.Delta.Y))
 
 let dbgmsg(str:string) = printfn "%A" str
 
