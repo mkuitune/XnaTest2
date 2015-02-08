@@ -52,23 +52,48 @@ open GeometryUtils
 // 10. Export to STL
 // 11. CSG operations on models
 // 12. Main thread polls input, worker thread renders. 
+//type View() = 
+//    let mutable azx = 0. // z = r cos axy, x = r sin axy 
+//    let mutable ay = Math.PI * 0.5  // y = 1.0 - r cos az
+//    let mutable r = 3.   
+//    
+//    let mutable up = v3(0,1,0) 
+//    let mutable target = v3(0, 0, 0)
+//    let mutable aspectRatio = 1.0f
+//    //let mutable pos = v3(0, 0, r)
+//  
+//    // TODO: Rotate around y, rotate in plane 
+//    member this.PosX = r  * (sin azx) * (sin ay)
+//    member this.PosY = r * (cos ay)
+//    member this.PosZ = r  * (cos azx) * (sin ay)
+//
+//    member this.RotateOffplane doff =  ay <- ay + doff
+//    member this.RotateInplane dazx = azx <- (azx + dazx) % (Math.PI * 2.0)
+//    member this.Projection  =  
+//        Matrix.CreatePerspectiveFieldOfView(pi_4, aspectRatio, 0.1f, 100.0f)
+//    member this.ViewMatrix = 
+//        let pos = v3(this.PosX, this.PosY, this.PosZ)
+//        Matrix.CreateLookAt(pos, target, up)
+//    member this.SetAspectRatio (r:float32) = aspectRatio <- r
+
 
 type View() = 
-    let mutable azx = 0. // z = r cos axy, x = r sin axy 
-    let mutable ay = Math.PI * 0.5  // y = 1.0 - r cos az
+    let mutable ayx = 0. // z = r cos axy, x = r sin axy 
+    let mutable az = Math.PI * 0.5  // y = 1.0 - r cos az
     let mutable r = 3.   
     
-    let mutable up = v3(0,1,0) 
+    let mutable up = v3(0,0,1) 
     let mutable target = v3(0, 0, 0)
     let mutable aspectRatio = 1.0f
     //let mutable pos = v3(0, 0, r)
   
     // TODO: Rotate around y, rotate in plane 
-    member this.PosX = r  * (sin azx) * (sin ay)
-    member this.PosY = r * (cos ay)
-    member this.PosZ = r  * (cos azx) * (sin ay)
-    member this.RotateOffplane doff =  ay <- ay + doff
-    member this.RotateInplane dazx = azx <- (azx + dazx) % (Math.PI * 2.0)
+    member this.PosX = r  * (sin ayx) * (sin az)
+    member this.PosY = r  * (cos ayx) * (sin az)
+    member this.PosZ = r * (cos az)
+
+    member this.RotateOffplane doff =  az <- az + doff
+    member this.RotateInplane dayx = ayx <- (ayx + dayx) % (Math.PI * 2.0)
     member this.Projection  =  
         Matrix.CreatePerspectiveFieldOfView(pi_4, aspectRatio, 0.1f, 100.0f)
     member this.ViewMatrix = 
@@ -379,7 +404,6 @@ type ScreenApplication(g:GraphicsDevice, cont:ContentManager) =
         device.Clear(Color.LightSlateGray)
 
         //drawWith(renderable, view, shadingContext, g)
-        //drawWith(lines, view, shadingContext, g)
         drawWith(grid, view, shadingContext, g)
         ui2d.Draw(time, device)
 
@@ -396,8 +420,8 @@ type ScreenApplication(g:GraphicsDevice, cont:ContentManager) =
         if buttons.IndexedDelta <> [] then printfn "%A" buttons.IndexedDelta
         // Handle events
         if buttons.Pressed(Switch.Pointer.Left ) then
-            let factor = 0.1
-            view.RotateInplane (-factor * (float pointer.Delta.X))
+            let factor = 0.01
+            view.RotateInplane (factor * (float pointer.Delta.X))
             view.RotateOffplane (-factor * (float pointer.Delta.Y))
 
 let dbgmsg(str:string) = printfn "%A" str
